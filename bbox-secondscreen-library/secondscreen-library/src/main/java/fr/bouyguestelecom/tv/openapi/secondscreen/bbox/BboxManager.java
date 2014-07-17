@@ -11,7 +11,6 @@ import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceListener;
 
-
 /**
  * @author Pierre-Etienne Cherière PCHERIER@bouyguestelecom.fr
  */
@@ -23,7 +22,6 @@ public class BboxManager {
     private WifiManager wifiManager = null;
     private JmDNS jmDNS;
     private ServiceListener serviceListener;
-    private CallbackBboxFound callbackBboxFound;
     private Context context;
 
     public void startLookingForBbox(Context context, CallbackBboxFound callbackBboxFound) {
@@ -31,7 +29,6 @@ public class BboxManager {
         Log.i("BboxManager", "Start looking for Bbox");
 
         this.context = context;
-        this.callbackBboxFound = callbackBboxFound;
         if (multicastLock == null) {
             wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
             multicastLock = wifiManager.createMulticastLock("LibBboxOpenAPI");

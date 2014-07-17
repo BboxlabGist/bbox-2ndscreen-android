@@ -250,7 +250,7 @@ public class RemoteManager {
          * current volume in given parameter
          *
          * @param statusCode http status response
-         * @param volume     0 >= volume >= 100; -1 if error occur
+         * @param volume     0 <= volume <= 100; -1 if error occur
          */
         public void onResult(int statusCode, int volume);
     }
