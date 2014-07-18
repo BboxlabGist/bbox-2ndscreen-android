@@ -17,7 +17,8 @@ import javax.jmdns.ServiceListener;
 public class BboxManager {
 
     private final static String LOG_TAG = "BboxManager";
-    private final static String SERVICE_TYPE = "_bbox._tcp.local.";
+    private final static String SERVICE_NAME = "Bboxapi";
+    private final static String SERVICE_TYPE = "_http.local.";
     private WifiManager.MulticastLock multicastLock = null;
     private WifiManager wifiManager = null;
     private JmDNS jmDNS;
@@ -73,7 +74,9 @@ public class BboxManager {
                     @Override
                     public void serviceAdded(ServiceEvent event) {
                         Log.i(LOG_TAG, "Service added");
-                        jmDNS.requestServiceInfo(event.getType(), event.getName(), true);
+                        if (event.getName().equals(SERVICE_NAME)) {
+                            jmDNS.requestServiceInfo(event.getType(), event.getName(), true);
+                        }
                     }
 
                     @Override
@@ -83,8 +86,8 @@ public class BboxManager {
 
                     @Override
                     public void serviceResolved(ServiceEvent event) {
-                        Log.i(LOG_TAG, "Bbox found on " + event.getInfo().getInet4Addresses()[0].getHostAddress());
                         String bboxIP = event.getInfo().getInet4Addresses()[0].getHostAddress();
+                        Log.i(LOG_TAG, "Bbox found on " + bboxIP);
                         callbackBboxFound.onResult(new Bbox(bboxIP, context));
                     }
                 };
