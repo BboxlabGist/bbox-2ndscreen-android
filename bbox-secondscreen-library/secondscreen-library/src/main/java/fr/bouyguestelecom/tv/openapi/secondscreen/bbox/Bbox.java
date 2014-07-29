@@ -12,6 +12,7 @@ import fr.bouyguestelecom.tv.openapi.secondscreen.remote.RemoteManager;
 public class Bbox {
 
     public String ip;
+    public String macAddress;
     public ApplicationsManager applicationsManager;
     public RemoteManager remoteManager;
     private BboxRestClient bboxRestClient;
@@ -20,6 +21,7 @@ public class Bbox {
     public Bbox(String ip, Context context) {
         this.mContex = context;
         this.ip = ip;
+        this.macAddress = WOLPowerManager.getMacFromArpCache(ip);
         bboxRestClient = new BboxRestClient(ip, mContex);
         applicationsManager = new ApplicationsManager(bboxRestClient);
         remoteManager = new RemoteManager(bboxRestClient);
@@ -39,5 +41,13 @@ public class Bbox {
 
     public ApplicationsManager getApplicationsManager() {
         return applicationsManager;
+    }
+
+    public String getMacAddress() {
+        return macAddress;
+    }
+
+    public void setMacAddress(String macAddress) {
+        this.macAddress = macAddress;
     }
 }
