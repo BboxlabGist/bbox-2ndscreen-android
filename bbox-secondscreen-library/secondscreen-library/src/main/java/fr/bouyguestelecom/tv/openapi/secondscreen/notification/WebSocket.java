@@ -61,7 +61,7 @@ public class WebSocket implements NotificationManager {
 
         this.appId = appId;
         this.bboxRestClient = bboxRestClient;
-        listenerMap.put(NotificationType.APPLICATIONS.toString(), applicationsListeners);
+        listenerMap.put(NotificationType.APPLICATION.toString(), applicationsListeners);
         listenerMap.put(NotificationType.MESSAGE.toString(), messagesListeners);
         listenerMap.put(NotificationType.MEDIA.toString(), mediaListeners);
         listenerMap.put(NotificationType.USER_INPUT.toString(), userInputListeners);
