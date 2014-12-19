@@ -8,11 +8,12 @@ import android.content.Context;
  */
 public class BboxRestClient extends RestClient {
 
-    private static final String TAG = "BboxRestClient";
+    private static final String TAG = BboxRestClient.class.getName();
+    public static final String ID_SESSION_HEADER = "x-sessionid";
 
     private String BBOX_IP;
     private String URL;
-    private String idSessionHeader = null;
+    private String sessionId = null;
 
     /**
      * The constructor need the IP of the Bbox and the current {@link android.content.Context Context}
@@ -29,15 +30,15 @@ public class BboxRestClient extends RestClient {
         return BBOX_IP;
     }
 
-    public String getIdSession()
+    public String getSessionId()
     {
-        return idSessionHeader;
+        return sessionId;
     }
 
-    public void setIdSession(String headerName, String headerValue)
+    public void setSessionId(String value)
     {
-        idSessionHeader = headerValue;
-        super.setHeader(headerName, headerValue);
+        sessionId = value;
+        super.setHeader(ID_SESSION_HEADER, value);
     }
 }
 
