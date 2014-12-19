@@ -56,7 +56,7 @@ public class WebSocket implements NotificationManager {
     private Map<String, List<Listener>> listenerMap = new HashMap<String, List<Listener>>();
     private HashSet<String> notificationsSubscribed = new HashSet<String>();
 
-    private WebSocket(final String appId, BboxRestClient bboxRestClient) {
+    public WebSocket(final String appId, BboxRestClient bboxRestClient) {
         assert (appId == null) : "You must provide a valid appId when initializing WebSocket";
         assert (bboxRestClient == null) : "You must provide a valid BboxRestClient when initializing WebSocket";
 
@@ -150,7 +150,7 @@ public class WebSocket implements NotificationManager {
         };
     }
 
-    private WebSocket(String appId, Bbox bbox) {
+    public WebSocket(String appId, Bbox bbox) {
         this(appId, bbox == null ? null : bbox.getBboxRestClient());
     }
 
