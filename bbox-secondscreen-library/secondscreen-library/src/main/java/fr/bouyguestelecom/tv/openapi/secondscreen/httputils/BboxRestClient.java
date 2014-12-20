@@ -2,6 +2,8 @@ package fr.bouyguestelecom.tv.openapi.secondscreen.httputils;
 
 import android.content.Context;
 
+import fr.bouyguestelecom.tv.openapi.secondscreen.authenticate.Auth;
+
 /**
  * A Http REST client to send request to the BboxAPI. All requests are asynchronous.
  * @author Pierre-Etienne Cherière PCHERIER@bouyguestelecom.fr
@@ -9,7 +11,6 @@ import android.content.Context;
 public class BboxRestClient extends RestClient {
 
     private static final String TAG = BboxRestClient.class.getName();
-    public static final String ID_SESSION_HEADER = "x-sessionid";
 
     private String BBOX_IP;
     private String URL;
@@ -38,7 +39,7 @@ public class BboxRestClient extends RestClient {
     public void setSessionId(String value)
     {
         sessionId = value;
-        super.setHeader(ID_SESSION_HEADER, value);
+        super.setHeader(Auth.ID_SESSION_HEADER, value);
     }
 }
 

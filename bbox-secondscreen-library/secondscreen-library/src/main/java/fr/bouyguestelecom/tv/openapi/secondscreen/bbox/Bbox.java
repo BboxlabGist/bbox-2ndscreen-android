@@ -1,24 +1,12 @@
 package fr.bouyguestelecom.tv.openapi.secondscreen.bbox;
 
 import android.content.Context;
-import android.util.Log;
-
-import com.loopj.android.http.JsonHttpResponseHandler;
-
-import org.apache.http.Header;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 import fr.bouyguestelecom.tv.openapi.secondscreen.application.ApplicationsManager;
+import fr.bouyguestelecom.tv.openapi.secondscreen.authenticate.Auth;
+import fr.bouyguestelecom.tv.openapi.secondscreen.authenticate.IAuthCallback;
 import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.BboxRestClient;
-import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.CallbackHttpStatus;
-import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.PFSRestClient;
 import fr.bouyguestelecom.tv.openapi.secondscreen.remote.RemoteManager;
-import fr.bouyguestelecom.tv.openapi.secondscreen.security.Token;
 
 /**
  * @author Pierre-Etienne Cherière PCHERIER@bouyguestelecom.fr
@@ -31,22 +19,17 @@ public class Bbox {
     public ApplicationsManager applicationsManager;
     public RemoteManager remoteManager;
     private BboxRestClient bboxRestClient;
-    private PFSRestClient pfsRestClient;
     private Context mContex;
-    private Token securityToken;
+    private Auth auth;
 
     public Bbox(String ip, Context context) {
         this.mContex = context;
         this.ip = ip;
         this.macAddress = WOLPowerManager.getMacFromArpCache(ip);
         bboxRestClient = new BboxRestClient(ip, mContex);
-        pfsRestClient = new PFSRestClient(mContex);
-        applicationsManager = new ApplicationsManager(bboxRestClient);
+        applicationsManager = new ApplicationsManager(this);
         remoteManager = new RemoteManager(bboxRestClient);
-    }
-
-    public PFSRestClient getPFSRestClient() {
-        return pfsRestClient;
+        auth = new Auth(mContex, this);
     }
 
     public BboxRestClient getBboxRestClient() {
@@ -73,85 +56,16 @@ public class Bbox {
         this.macAddress = macAddress;
     }
 
-    public Token getSecurityToken() { return securityToken; }
-
-    public void generateSessionId(final CallbackHttpStatus callback) {
-        if (securityToken == null) {
-            Log.e(LOG_TAG, "createIdSession called before security token creation");
-            callback.onResult(400);
-        } else {
-            JSONObject data = new JSONObject();
-            try {
-                data.put("token", securityToken.getValue());
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, e.getMessage());
-                callback.onResult(400);
-                return;
-            }
-            bboxRestClient.post("security/sessionId", data, new JsonHttpResponseHandler() {
-                        @Override
-                        public void onSuccess(final int statusCode, final Header[] headers, final JSONObject response) {
-                            for (Header header : headers) {
-                                if (BboxRestClient.ID_SESSION_HEADER.equals(header.getName())){
-                                    bboxRestClient.setSessionId(header.getValue());
-                                    callback.onResult(statusCode);
-                                    return;
-                                }
-                            }
-
-                            Log.e(LOG_TAG, "Cannot find " + BboxRestClient.ID_SESSION_HEADER + " header in response");
-                            callback.onResult(404);
-                        }
-
-                        public void onFailure(int statusCode, Throwable e, JSONObject errorResponse) {
-                            Log.e(LOG_TAG, e.getMessage());
-                            callback.onResult(statusCode);
-                        }
-                    }
-            );
-        }
+    public void authenticate(String appId, String appSecret, IAuthCallback callback) {
+        auth.authenticate(appId, appSecret, callback);
+        bboxRestClient.setSessionId(auth.getSessionId());
     }
 
-    // Requests a security token from PFS
-    public void generateSecurityToken(String appId, String appSecret, final CallbackHttpStatus callback) {
-        JSONObject request = new JSONObject();
-        try {
-            request.put("appId", appId);
-            request.put("appSecret", appSecret);
-        } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage());
-            callback.onResult(400);
-            return;
-        }
-        pfsRestClient.post("security/token", request, new JsonHttpResponseHandler() {
-                    @Override
-                    public void onSuccess(final int statusCode, final Header[] headers, final JSONObject response) {
-
-                        String tokenValue = null;
-                        Date tokenValidity = null;
-                        for (Header header : headers) {
-                            if (PFSRestClient.TOKEN_HEADER.equals(header.getName())){
-                                tokenValue = header.getValue();
-                            } else if (PFSRestClient.TOKEN_VALIDITY_HEADER.equals(header.getName()))  {
-                                tokenValidity = new Date(Long.parseLong(header.getValue()));
-                            }
-                        }
-
-                        // Update token
-                        if (tokenValue != null && tokenValidity != null) {
-                            securityToken = new Token(tokenValue, tokenValidity);
-                        } else {
-                            Log.e(LOG_TAG, "Cannot retrieve token info from http headers");
-                        }
-
-                        callback.onResult(statusCode);
-                    }
-
-                    public void onFailure(int statusCode, Throwable e, JSONObject errorResponse) {
-                        Log.e(LOG_TAG, e.getMessage());
-                        callback.onResult(statusCode);
-                    }
-                }
-        );
+    /**
+     * Can return null if authentication not done or failed.
+     * @return Current session id
+     */
+    public String getSessionId() {
+        return auth.getSessionId();
     }
 }

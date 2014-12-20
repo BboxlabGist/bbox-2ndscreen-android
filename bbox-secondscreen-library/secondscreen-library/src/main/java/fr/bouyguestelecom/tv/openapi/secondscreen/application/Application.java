@@ -15,36 +15,30 @@ public class Application {
     private String appName;
     private String logoUrl;
     private String appId;
-    private ApplicationState appState;
-    private NotificationManager.Listener appListener;
-    private ChangeListener changeListener;
+    private String appState;
+    private transient NotificationManager.Listener appListener = new NotificationManager.Listener() {
+        @Override
+        public void onNotification(JSONObject msg) {
 
-    public Application(String packageName, String appName, String logoUrl, ApplicationState appState, String appId) {
+        }
+    };;
+    private transient ChangeListener changeListener;
+
+    public Application(String packageName, String appName, String logoUrl, String appState, String appId) {
         this.packageName = packageName;
         this.appName = appName;
         this.logoUrl = logoUrl;
         this.appState = appState;
         this.appId = appId;
-        initAppListener();
     }
 
     public Application(String packageName, String appName) {
         this.packageName = packageName;
         this.appName = appName;
-        initAppListener();
     }
 
     public Application(String packageName) {
         this.packageName = packageName;
-    }
-
-    private void initAppListener() {
-        appListener = new NotificationManager.Listener() {
-            @Override
-            public void onNotification(JSONObject msg) {
-
-            }
-        };
     }
 
     public void setChangeListener(ChangeListener changeListener) {
@@ -80,11 +74,11 @@ public class Application {
     }
 
     public ApplicationState getAppState() {
-        return appState;
+        return ApplicationState.valueForState(appState);
     }
 
     public void setAppState(ApplicationState appState) {
-        this.appState = appState;
+        this.appState = appState.toString();
     }
 
     public String getAppId() {

@@ -1,11 +1,13 @@
 package fr.bouyguestelecom.tv.openapi.secondscreen.httputils;
 
 import android.content.Context;
+import android.os.Looper;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.JsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
+import com.loopj.android.http.SyncHttpClient;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -28,7 +30,8 @@ public abstract class RestClient {
 
     protected Header[] contentTypeHeader = new BasicHeader[] {new BasicHeader("content-type", CONTENT_TYPE)};
 
-    protected AsyncHttpClient client = new AsyncHttpClient();
+    protected AsyncHttpClient asyncClient = new AsyncHttpClient();
+    protected AsyncHttpClient syncClient = new SyncHttpClient();
 
     protected Context mContext;
 
@@ -78,7 +81,7 @@ public abstract class RestClient {
      * @param responseHandler
      */
     public void get(String url, RequestParams params, JsonHttpResponseHandler responseHandler) {
-        client.get(mContext, BASE_URL+url, contentTypeHeader, params, responseHandler);
+        getClient().get(mContext, BASE_URL+url, contentTypeHeader, params, responseHandler);
     }
 
     /**
@@ -96,7 +99,7 @@ public abstract class RestClient {
                 Log.e(LOG_TAG, e.getMessage());
             }
         }
-        client.post(mContext, BASE_URL+url, null, httpEntity, CONTENT_TYPE, responseHandler);
+        getClient().post(mContext, BASE_URL+url, null, httpEntity, CONTENT_TYPE, responseHandler);
     }
 
     /**
@@ -115,7 +118,7 @@ public abstract class RestClient {
                 Log.e(LOG_TAG, e.getMessage());
             }
         }
-        client.put(mContext, BASE_URL+url, null, httpEntity, CONTENT_TYPE, responseHandler);
+        getClient().put(mContext, BASE_URL+url, null, httpEntity, CONTENT_TYPE, responseHandler);
     }
 
     /**
@@ -125,14 +128,21 @@ public abstract class RestClient {
      * @param responseHandler
      */
     public void delete(String url, RequestParams params, JsonHttpResponseHandler responseHandler) {
-        client.delete(mContext, BASE_URL+url, contentTypeHeader, responseHandler);
+        getClient().delete(mContext, BASE_URL+url, contentTypeHeader, responseHandler);
     }
 
     public void setHeader(String headerName, String headerValue)
     {
-        client.addHeader(headerName, headerValue);
+        syncClient.addHeader(headerName, headerValue);
+        asyncClient.addHeader(headerName, headerValue);
     }
 
+    public AsyncHttpClient getClient() {
+        // Return the synchronous HTTP client when the thread is not prepared
+        if (Looper.myLooper() == null)
+            return syncClient;
+        return asyncClient;
+    }
     public String getBaseUrl() {
         return BASE_URL;
     }

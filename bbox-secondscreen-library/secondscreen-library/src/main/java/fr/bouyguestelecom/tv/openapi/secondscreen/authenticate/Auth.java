@@ -3,16 +3,17 @@ package fr.bouyguestelecom.tv.openapi.secondscreen.authenticate;
 import android.content.Context;
 import android.util.Log;
 
-import com.loopj.android.http.JsonHttpResponseHandler;
+import java.util.Date;
 
-import org.apache.http.Header;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import fr.bouyguestelecom.tv.openapi.secondscreen.apiutils.BboxApiUrl;
-import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.BboxRestClient;
-import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.PFSRestClient;
-
+import fr.bouyguestelecom.tv.openapi.secondscreen.bbox.Bbox;
+import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.AdapterUtils;
+import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.IBboxSecurityService;
+import fr.bouyguestelecom.tv.openapi.secondscreen.security.Credentials;
+import fr.bouyguestelecom.tv.openapi.secondscreen.security.Token;
+import retrofit.Callback;
+import retrofit.RetrofitError;
+import retrofit.client.Header;
+import retrofit.client.Response;
 /**
  * This class is the main entry point for all authentication functionality
  * Every single application must register through this process before trying to communicate with the openAPI
@@ -20,51 +21,28 @@ import fr.bouyguestelecom.tv.openapi.secondscreen.httputils.PFSRestClient;
  */
 public class Auth {
 
-    private final String LOG_TAG = getClass().toString();
+    private static final String LOG_TAG = Auth.class.toString();
 
-    private static Auth instance = null;
-    private Context mContext = null;
+    private Context context = null;
     private String sessionId = null;
-    private String token = null;
-    private String mbboxIp = null;
+    private Token token = null;
+    private Bbox bbox = null;
 
-    private static final String xSessionId = "x-sessionid";
-    private static final String xToken = "x-token";
+    public static final String TOKEN_HEADER = "x-token";
+    public static final String TOKEN_VALIDITY_HEADER = "x-token-validity";
+    public static final String ID_SESSION_HEADER = "x-sessionid";
 
     /**
-     * Retrieve the unique instance of this singleton
-     * @return value may be null if createInstance has not been called before
+     * Create an authorization instance.
+     * @param context : Context of the android application
+     * @param bbox : bbox to be used in the second authentication step
      */
-    public static Auth getInstance()
-    {
-        return instance;
+    public Auth(Context context, Bbox bbox) {
+        this.context = context;
+        this.bbox = bbox;
     }
 
     /**
-     * Create the authorization singleton if needed
-     * @param ctx : Context of the android application
-     * @param bboxIp : bboxIp to be used in the second authentication step
-     * @return the singleton instance to be used to authenticate the application
-     */
-    public static synchronized Auth createInstance(Context ctx, String bboxIp) {
-        if(instance == null) {
-            instance = new Auth(ctx, bboxIp);
-        }
-        return instance;
-    }
-
-    /**
-     * Private constructor, use @see #createInstance(Context ctx, String bboxIp) instead
-     * @param ctx
-     * @param bboxIp
-     */
-    private Auth(Context ctx, String bboxIp) {
-        mContext = ctx;
-        mbboxIp = bboxIp;
-    }
-
-    /**
-     *
      * @return the sessionId (this session id must be used in every function call
      * between this application and the OpenAPI. To do this the sessionId must be add as an http header
      * in the communication with the OpenAPI
@@ -80,7 +58,7 @@ public class Auth {
      * will provide in return a sessionId that must be use in every futher cummincation with
      * the OpenAPI @see{getSessionId}
      */
-    public String getSecurityToken() {
+    public Token getSecurityToken() {
         return token;
     }
 
@@ -90,14 +68,14 @@ public class Auth {
      * appId and secretId make a pair of parameters used by a remote bouyguestelecom platform to decide if you are 
      * legitimate to use OpenAPI. This pair (unique by application type) must have been provided to 
      * bouyguestelecom prior to any use, if this is not the case the remote platform could not identify you
-     * @param appId : the application identifier supplied by you to bouyguestelecom (must be unique per application type)
-     * @param secretId : the secretId supplied by you to bouyguestelecom
+     * @param appId : the application identifier supplied by bouyguestelecom (must be unique per application type)
+     * @param appSecret : the appSecret supplied by bouyguestelecom
      * @param callback : an IAuthCallBack object that will be triggered at the end of the authorization process
      */
-    public void authenticate(String appId, String secretId, IAuthCallback callback)
+    public void authenticate(String appId, String appSecret, IAuthCallback callback)
     {
         sessionId = null;
-        innerAuthenticate(appId, secretId, callback);
+        innerAuthenticate(appId, appSecret, callback);
     }
 
     /**
@@ -108,109 +86,96 @@ public class Auth {
      */
     public void connectOnly(final IAuthCallback callback)
     {
-        BboxRestClient restClient = new BboxRestClient(mbboxIp, mContext);
-
-        JSONObject body = new JSONObject();
-
-        try {
-            body.put("sessionId", token);
-        } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage());
-        }
-
-        restClient.post(BboxApiUrl.SECURE_CONNECT, body, new JsonHttpResponseHandler() {
+        AdapterUtils.createBboxService(bbox, IBboxSecurityService.class).getSessionId(token, new Callback<Object>() {
             @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-
+            public void success(Object o, Response response) {
+                int statusCode = response.getStatus();
                 if (statusCode == 401){
                     Log.e(LOG_TAG, "Application is not authorized");
                     callback.onAuthResult(401, "Application is not authorized, please contact bouyguestelecom.");
-                }
-
-                if (statusCode == 200 || statusCode == 204) {
-                    for (int i = 0; i < headers.length; i++) {
-                        if (xSessionId.equals(headers[i].getName())) {
-                            Auth.getInstance().sessionId = headers[i].getValue();
+                } else if (statusCode == 200 || statusCode == 204) {
+                    for (Header header : response.getHeaders()) {
+                        if (ID_SESSION_HEADER.equalsIgnoreCase(header.getName())){
+                            sessionId = header.getValue();
                             callback.onAuthResult(statusCode, "Connexion established");
                             break;
                         }
                     }
                 } else {
-                    Log.e(LOG_TAG, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + " - 200 expected");
+                    Log.e(LOG_TAG, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + " - 200 or 204 expected");
                     callback.onAuthResult(statusCode, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + ". Something went wrong while checking your application's authorisation on the bbox.");
                 }
             }
 
             @Override
-            public void onFailure(int statusCode, Throwable e, JSONObject errorResponse) {
+            public void failure(RetrofitError error) {
+                int statusCode = 401;
+                if (error.getResponse() != null)
+                    statusCode = error.getResponse().getStatus();
 
                 if (statusCode == 401){
                     Log.e(LOG_TAG, "Application is not authorized");
-                    callback.onAuthResult(401, "Application is not authorized, please contact bouyguestelecom.");
+                    callback.onAuthResult(statusCode, "Application is not authorized, please contact bouyguestelecom.");
                 }
                 else {
-                    Log.e(LOG_TAG, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + " - 200 expected");
+                    Log.e(LOG_TAG, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + " - 200 or 204 expected");
                     callback.onAuthResult(statusCode, "Unexpected response while getting session id. HTTP code: " + String.valueOf(statusCode) + ". Something went wrong while checking your application's authorisation on the bbox.");
                 }
             }
         });
     }
 
-    public void innerAuthenticate(String appId, String secretId, final IAuthCallback callback) {
+    public void innerAuthenticate(String appId, String appSecret, final IAuthCallback callback) {
+            AdapterUtils.createPfsService().getToken(new Credentials(appId, appSecret), new Callback<Object>() {
 
-        Auth.getInstance().token = null;
+                @Override
+                public void success(Object o, Response response) {
+                    int statusCode = response.getStatus();
+                    if (statusCode == 401) {
+                        Log.e(LOG_TAG, "Application is not authorized, please contact bouyguestelecom.");
+                        callback.onAuthResult(401, "Application is not authorized, please contact bouyguestelecom.");
+                    }
 
-        PFSRestClient restClient = new PFSRestClient(mContext);
+                    if (statusCode == 200 || statusCode == 204) {
+                        String tokenValue = null;
+                        Date tokenValidity = null;
+                        for (Header header : response.getHeaders()) {
+                            if (TOKEN_HEADER.equalsIgnoreCase(header.getName())) {
+                                tokenValue = header.getValue();
+                            } else if (TOKEN_VALIDITY_HEADER.equalsIgnoreCase(header.getName())) {
+                                tokenValidity = new Date(Long.parseLong(header.getValue()));
+                            }
+                        }
 
-        JSONObject body = new JSONObject();
-        try {
-            body.put("appId", String.valueOf(appId));
-            body.put("appSecret", String.valueOf(secretId));
-        } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage());
-        }
+                        // Update token
+                        if (tokenValue != null && tokenValidity != null) {
+                            token = new Token(tokenValue, tokenValidity);
+                            connectOnly(callback);
+                        } else {
+                            Log.e(LOG_TAG, "Cannot retrieve token info from http headers");
+                            callback.onAuthResult(401, "Cannot retrieve token info from http headers");
+                        }
 
-        restClient.post("/security/token", body, new JsonHttpResponseHandler() {
-
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-
-                if (statusCode == 401){
-                    Log.e(LOG_TAG, "Application is not authorized, please contact bouyguestelecom.");
-                    callback.onAuthResult(401, null);
+                    } else {
+                        Log.e(LOG_TAG, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + " - 200 or 204 expected");
+                        callback.onAuthResult(statusCode, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + ". Something went wrong when trying to authenticate your application on the distant PFS. Please make sure your device can access the Internet.");
+                    }
                 }
 
-                if (statusCode == 200 || statusCode == 204) {
-                    for (int i = 0; i < headers.length; i++) {
-                        if (xToken.equals(headers[i].getName())) {
-                            Auth.getInstance().token = headers[i].getValue();
-                            Auth.getInstance().connectOnly(callback);
-                            break;
-                        }
+                @Override
+                public void failure(RetrofitError error) {
+                    int statusCode = 401;
+                    if (error.getResponse() != null)
+                        statusCode = error.getResponse().getStatus();
+
+                    if (statusCode == 401) {
+                        Log.e(LOG_TAG, "Application is not authorized");
+                        callback.onAuthResult(401, "Application is not authorized, please contact bouyguestelecom.");
+                        return;
                     }
-                } else {
-                    Log.e(LOG_TAG, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + " - 200 expected");
+                    Log.e(LOG_TAG, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + " - 200 or 204 expected");
                     callback.onAuthResult(statusCode, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + ". Something went wrong went trying to authenticate your application on the distant PFS. Please make sure your device can access the Internet.");
                 }
-            }
-
-            @Override
-            public void onFailure(int statusCode, Throwable e, JSONObject errorResponse) {
-
-                if (statusCode == 0)
-                {
-                    Log.e(LOG_TAG, "Exception occurred while getting security token, please contact bouyguestelecom.");
-                    callback.onAuthResult(401, e.getMessage());
-                    return;
-                }
-                if (statusCode == 401){
-                    Log.e(LOG_TAG, "Application is not authorized");
-                    callback.onAuthResult(401, "Application is not authorized, please contact bouyguestelecom.");
-                    return;
-                }
-                Log.e(LOG_TAG, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + " - 200 expected");
-                callback.onAuthResult(statusCode, "Unexpected response while getting security token. HTTP code: " + String.valueOf(statusCode) + ". Something went wrong went trying to authenticate your application on the distant PFS. Please make sure your device can access the Internet.");
-            }
-        });
+            });
     }
 }

@@ -5,10 +5,10 @@ android {
     buildToolsVersion "21.1.1"
 
     defaultConfig {
-        minSdkVersion 8
+        minSdkVersion 9
         targetSdkVersion 21
-        versionCode 4
-        versionName "0.3.0"
+        versionCode 5
+        versionName "0.3.1-SNAPSHOT"
     }
     buildTypes {
         release {
@@ -25,4 +25,6 @@ dependencies {
     compile 'com.loopj.android:android-async-http:1.4.4'
     compile 'org.java-websocket:Java-WebSocket:1.+'
     compile 'com.github.rickyclarkson:jmdns:3.4.2-r353-1'
+    compile 'com.squareup.retrofit:retrofit:1.8.0'
+    compile 'com.squareup.okhttp:okhttp:2.1.0'
 }

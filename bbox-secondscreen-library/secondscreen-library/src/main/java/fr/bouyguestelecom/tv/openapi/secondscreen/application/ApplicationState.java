@@ -10,10 +10,10 @@ public enum ApplicationState {
     STOPPED("stopped"),
     UNKNOWN_STATE("unknown state");
 
-    private String state;
+    private String appState;
 
     private ApplicationState(String state) {
-        this.state = state;
+        this.appState = state;
     }
 
     public static ApplicationState valueForState(String state) {
@@ -26,6 +26,6 @@ public enum ApplicationState {
     }
 
     public String toString() {
-        return state;
+        return appState;
     }
 }

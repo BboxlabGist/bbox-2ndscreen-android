@@ -7,13 +7,13 @@ import java.util.Date;
  */
 public class Token {
     private Date validity;
-    private String value;
+    private String token;
 
-    public String getValue() { return value; }
+    public String getValue() { return token; }
     public Date getValidity() { return validity; }
 
     public Token(String value, Date validity) {
-        this.value = value;
+        this.token = value;
         this.validity = validity;
     }
 }
