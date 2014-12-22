@@ -27,4 +27,7 @@ public interface IBboxApplicationService {
 
     @POST("/applications/run/{appId}")
     public void changeApplicationState(@Header(Auth.ID_SESSION_HEADER) String idSession, @Path("appId") String appId, @Body ApplicationState appState, Callback<Object> callback);
+
+    @POST("/applications/register")
+    public void register(@Header(Auth.ID_SESSION_HEADER) String idSession, @Body Application application, Callback<Object> callback);
 }
