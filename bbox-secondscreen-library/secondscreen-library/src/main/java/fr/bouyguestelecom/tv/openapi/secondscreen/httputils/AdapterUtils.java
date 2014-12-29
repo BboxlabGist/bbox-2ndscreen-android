@@ -19,7 +19,7 @@ public class AdapterUtils {
     public static IPFSService createPfsService() {
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setEndpoint("https://dev.bouyguestelecom.fr")
-                .setClient(new ApacheClient(SSLUtils.createSslClient()))
+                //.setClient(new ApacheClient(SSLUtils.createSslClient()))
                 .build();
         return restAdapter.create(IPFSService.class);
     }

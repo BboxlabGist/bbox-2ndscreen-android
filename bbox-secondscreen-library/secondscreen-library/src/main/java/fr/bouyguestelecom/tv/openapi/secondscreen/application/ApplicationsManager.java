@@ -251,39 +251,41 @@ public class ApplicationsManager {
         });
     }
 
-    /* Not implemented in bbox api
+    /* Not implemented in bbox api */
     public void getMyAppId(String appName, final CallbackAppId callbackAppId) {
-        JSONObject body = new JSONObject();
+        AdapterUtils.createBboxService(bbox, IBboxApplicationService.class).register(bbox.getSessionId(), new Application(null, appName), new Callback<Object>() {
+            @Override
+            public void success(Object obj, Response response) {
+                int statusCode = response.getStatus();
 
-        try {
-            body.put("appName", appName);
-            bbox.getBboxRestClient().post(BboxApiUrl.APPLICATIONS_REGISTER, body, new JsonHttpResponseHandler() {
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                    if (statusCode == 204) {
-                        for (Header header : headers) {
-                            if (header.getName().equals("Location")) {
-                                String[] tab = header.getValue().split("/");
-                                int idx = tab.length;
-                                String appId = tab[idx - 1];
-
-                                callbackAppId.onResult(statusCode, appId);
-                            }
+                String appId = null;
+                if (statusCode == 204) {
+                    for (Header header : response.getHeaders()) {
+                        if ("location".equalsIgnoreCase(header.getName())) {
+                            String[] tab = header.getValue().split("/");
+                            appId = tab[tab.length - 1];
+                            break;
                         }
-                    } else {
-                        callbackAppId.onResult(statusCode, null);
                     }
+                } else {
+                    Log.e(LOG_TAG, "Unexpected response while register application. HTTP code: " + String.valueOf(statusCode) + " - 200 or 204 expected");
                 }
 
-                @Override
-                public void onFailure(int statusCode, Header[] headers, Throwable e, JSONObject errorResponse) {
-                    callbackAppId.onResult(statusCode, null);
-                }
-            });
-        } catch (JSONException e) {
-            Log.e(LOG_TAG, e.getMessage());
-        }
-    }*/
+                callbackAppId.onResult(statusCode, appId);
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                int statusCode = 500;
+                if (error.getResponse() != null)
+                    statusCode = error.getResponse().getStatus();
+
+                Log.e(LOG_TAG, "Error while starting application. HTTP code: " + String.valueOf(statusCode) + " - Server response: " + error.getMessage());
+
+                callbackAppId.onResult(statusCode, null);
+            }
+        });
+    }
 
     public interface CallbackApplications {
         /**
@@ -305,8 +307,7 @@ public class ApplicationsManager {
         public void onResult(ApplicationState applicationState);
     }
 
-    /* not used (reserved for application register
     public interface CallbackAppId {
         public void onResult(int statusCode, String appId);
-    }*/
+    }
 }
